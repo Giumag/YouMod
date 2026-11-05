@@ -2,16 +2,6 @@ name: Build IPA with tweaks
 on:
   workflow_dispatch:
     inputs:
-      repo:
-        description: 'Repository to build from'
-        required: true
-        default: 'Tonwalter888/YouMod'
-
-      branch:
-        description: 'Branch to build from'
-        required: true
-        default: 'main'
-
       ipa_url:
         description: "URL to the decrypted IPA file"
         default: ""
@@ -29,6 +19,12 @@ on:
         default: "com.google.ios.youtube"
         required: true
         type: string
+
+      minimal_build:
+        description: "Diagnostic IPA: build only YouMod, without auxiliary tweaks or Safari extension"
+        default: false
+        required: false
+        type: boolean
 
       youpip:
         description: "Integrate YouPiP"
@@ -111,7 +107,7 @@ jobs:
       - name: Hide Sensitive Inputs
         uses: levibostian/action-hide-sensitive-inputs@v1
         with:
-          exclude_inputs: bundle_id,display_name,youpip,ytuhd,ryd,abconfig,ytweaks,youslider,gonerino,demc,volboost,repo,branch,youquality
+          exclude_inputs: bundle_id,display_name,youpip,ytuhd,ryd,abconfig,ytweaks,youslider,gonerino,demc,volboost,youquality,minimal_build
           
       - name: Install MEGA downloader
         if: ${{ startsWith(inputs.ipa_url, 'https://mega.nz/') }}
@@ -149,7 +145,7 @@ jobs:
         run: brew install make ldid
 
       - name: Install Go
-        if: ${{ inputs.gonerino }}
+        if: ${{ !inputs.minimal_build && (inputs.gonerino) }}
         run: brew install go
 
       - name: Set PATH Environment Variables
@@ -217,11 +213,10 @@ jobs:
       - name: Checkout YouMod
         uses: actions/checkout@v7
         with:
-          repository: ${{ inputs.repo }}
-          ref: ${{ inputs.branch }}
           path: YouMod
 
       - name: Clone Open in YouTube (Safari Extension)
+        if: ${{ !inputs.minimal_build }}
         run: |
           git clone --quiet -n --depth=1 --filter=tree:0 https://github.com/BillyCurtis/OpenYouTubeSafariExtension.git
           cd OpenYouTubeSafariExtension
@@ -230,59 +225,61 @@ jobs:
           mv *.appex ${{ github.workspace }}
 
       - name: Clone YouPiP
-        if: ${{ inputs.youpip }}
+        if: ${{ !inputs.minimal_build && (inputs.youpip) }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouPiP.git
     
       - name: Clone YTUHD
-        if: ${{ inputs.ytuhd }}
+        if: ${{ !inputs.minimal_build && (inputs.ytuhd) }}
         run: git clone --quiet --depth=1 --recurse-submodules https://github.com/PoomSmart/YTUHD.git
            
       - name: Clone Return-YouTube-Dislikes
-        if: ${{ inputs.ryd }}
+        if: ${{ !inputs.minimal_build && (inputs.ryd) }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/Return-YouTube-Dislikes.git
 
       - name: Clone YouGroupSettings
+        if: ${{ !inputs.minimal_build }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouGroupSettings.git
            
       - name: Clone YTVideoOverlay
-        if: ${{ inputs.youpip || inputs.ytuhd || inputs.youquality }}
+        if: ${{ !inputs.minimal_build && (inputs.youpip || inputs.ytuhd || inputs.youquality) }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YTVideoOverlay.git
           
       - name: Clone YTABConfig
-        if: ${{ inputs.abconfig }}
+        if: ${{ !inputs.minimal_build && (inputs.abconfig) }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YTABConfig.git
 
       - name: Clone UncappedAVPlayer
+        if: ${{ !inputs.minimal_build }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/UncappedAVPlayer.git
 
       - name: Clone DontEatMyContent
-        if: ${{ inputs.demc }}
+        if: ${{ !inputs.minimal_build && (inputs.demc) }}
         run: git clone --quiet --depth=1 https://github.com/therealFoxster/DontEatMyContent.git
 
       - name: Clone YouSlider
-        if: ${{ inputs.youslider }}
+        if: ${{ !inputs.minimal_build && (inputs.youslider) }}
         run: |
           git clone --quiet --depth=1 https://github.com/PoomSmart/YouSlider.git
           wget --no-verbose --quiet https://github.com/Tonwalter888/Tonwalter888.github.io/raw/refs/heads/main/debs/alderis.deb
 
       - name: Clone YTweaks
-        if: ${{ inputs.ytweaks }}
+        if: ${{ !inputs.minimal_build && (inputs.ytweaks) }}
         run: git clone --quiet --depth=1 https://github.com/fosterbarnes/YTweaks.git
 
       - name: Clone Gonerino
-        if: ${{ inputs.gonerino }}
+        if: ${{ !inputs.minimal_build && (inputs.gonerino) }}
         run: git clone --quiet --depth=1 https://github.com/castdrian/Gonerino.git
 
       - name: Clone youtube-native-share
-        if: ${{ inputs.ytshare }}
+        if: ${{ !inputs.minimal_build && (inputs.ytshare) }}
         run: git clone --quiet --depth=1 https://github.com/jkhsjdhjs/youtube-native-share.git
 
       - name: Clone VolumeBoostYT
-        if: ${{ inputs.volboost }}
+        if: ${{ !inputs.minimal_build && (inputs.volboost) }}
         run: git clone --quiet --depth=1 https://github.com/VasirakCalgux/VolumeBoostYT.git
 
       - name: Clone YouQuality
-        if: ${{ inputs.youquality }}
+        if: ${{ !inputs.minimal_build && (inputs.youquality) }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouQuality.git
 
       - name: Build YouMod
@@ -293,14 +290,14 @@ jobs:
           mv packages/*.deb ${{ github.workspace }}/youmod.deb
         
       - name: Build YouPiP
-        if: ${{ inputs.youpip }}
+        if: ${{ !inputs.minimal_build && (inputs.youpip) }}
         run: |
           cd YouPiP
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/youpip.deb
 
       - name: Build YTUHD
-        if: ${{ inputs.ytuhd }}
+        if: ${{ !inputs.minimal_build && (inputs.ytuhd) }}
         run: |
           cd YTUHD
           brew install meson ninja
@@ -309,68 +306,70 @@ jobs:
           mv packages/*.deb ${{ github.workspace }}/ytuhd.deb
 
       - name: Build Return-YouTube-Dislikes
-        if: ${{ inputs.ryd }}
+        if: ${{ !inputs.minimal_build && (inputs.ryd) }}
         run: |
           cd Return-YouTube-Dislikes
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ryd.deb
 
       - name: Build YouGroupSettings
+        if: ${{ !inputs.minimal_build }}
         run: |
           cd YouGroupSettings
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ygs.deb
 
       - name: Build YTVideoOverlay
-        if: ${{ inputs.youpip || inputs.ytuhd || inputs.youquality }}
+        if: ${{ !inputs.minimal_build && (inputs.youpip || inputs.ytuhd || inputs.youquality) }}
         run: |
           cd YTVideoOverlay
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ytvo.deb
 
       - name: Build YTABConfig
-        if: ${{ inputs.abconfig }}
+        if: ${{ !inputs.minimal_build && (inputs.abconfig) }}
         run: |
           cd YTABConfig
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ytabconfig.deb
 
       - name: Build UncappedAVPlayer
+        if: ${{ !inputs.minimal_build }}
         run: |
           cd UncappedAVPlayer
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless ARCHS=arm64
           mv packages/*.deb ${{ github.workspace }}/uncapavplayer.deb
 
       - name: Build DontEatMyContent
-        if: ${{ inputs.demc }}
+        if: ${{ !inputs.minimal_build && (inputs.demc) }}
         run: |
           cd DontEatMyContent
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/demc.deb
 
       - name: Build YouSlider
-        if: ${{ inputs.youslider }}
+        if: ${{ !inputs.minimal_build && (inputs.youslider) }}
         run: |
           cd YouSlider
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/youslider.deb
 
       - name: Build YTweaks
-        if: ${{ inputs.ytweaks }}
+        if: ${{ !inputs.minimal_build && (inputs.ytweaks) }}
         run: |
           cd YTweaks
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ytweaks.deb
           
       - name: Build Gonerino
-        if: ${{ inputs.gonerino }}
+        if: ${{ !inputs.minimal_build && (inputs.gonerino) }}
         run: |
           cd Gonerino
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/gonerino.deb
 
       - name: Build youtube-native-share
-        if: ${{ inputs.ytshare }}
+        if: ${{ !inputs.minimal_build && (inputs.ytshare) }}
         run: |
           cd youtube-native-share
           git clone --quiet --depth=1 https://github.com/protocolbuffers/protobuf.git
@@ -378,14 +377,14 @@ jobs:
           mv packages/*.deb ${{ github.workspace }}/ytnativeshare.deb
 
       - name: Build VolumeBoostYT
-        if: ${{ inputs.volboost }}
+        if: ${{ !inputs.minimal_build && (inputs.volboost) }}
         run: |
           cd VolumeBoostYT
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless ARCHS=arm64
           mv packages/*.deb ${{ github.workspace }}/volboostyt.deb
 
       - name: Build YouQuality
-        if: ${{ inputs.youquality }}
+        if: ${{ !inputs.minimal_build && (inputs.youquality) }}
         run: |
           cd YouQuality
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
@@ -393,12 +392,21 @@ jobs:
           
       - name: Inject Tweaks Into IPA
         run: |
-          tweaks="OpenYouTubeSafariExtension.appex"
+          tweaks=""
+          if [[ -d "OpenYouTubeSafariExtension.appex" ]]; then
+            tweaks="OpenYouTubeSafariExtension.appex"
+          fi
 
           for f in *.deb; do
+            [[ -f "$f" ]] || continue
             tweaks="$tweaks $f"
           done
-          
+
+          if [[ -z "$tweaks" ]]; then
+            echo "::error::No tweak package found for injection."
+            exit 1
+          fi
+
           cyan -i youtube.ipa -o YouMod_${{ env.YT_VERSION }}_v${{ env.YOUMOD_VERSION }}.ipa -uwef $tweaks -n "${{ inputs.display_name }}" -b ${{ inputs.bundle_id }}
 
       - name: Create a Draft Release
