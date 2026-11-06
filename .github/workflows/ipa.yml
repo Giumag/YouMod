@@ -433,13 +433,13 @@ jobs:
             done
           } > "$manifest"
           {
-            echo "### Build provenance"
-            echo "Profile: `${{ inputs.build_profile }}`"
-            echo "Commit: `${{ github.sha }}`"
-            echo "YouTube version: `${{ env.YT_VERSION }}`"
-            echo "Input IPA SHA-256: `$(shasum -a 256 youtube.ipa | awk '{print $1}')`"
-            echo "Output IPA SHA-256: `$(shasum -a 256 "${prefix}.ipa" | awk '{print $1}')`"
-            echo "See the .manifest.txt release asset for source revisions and package hashes."
+            printf '### Build provenance\n'
+            printf 'Profile: `%s`\n' "${{ inputs.build_profile }}"
+            printf 'Commit: `%s`\n' "${{ github.sha }}"
+            printf 'YouTube version: `%s`\n' "${{ env.YT_VERSION }}"
+            printf 'Input IPA SHA-256: `%s`\n' "$(shasum -a 256 youtube.ipa | awk '{print $1}')"
+            printf 'Output IPA SHA-256: `%s`\n' "$(shasum -a 256 "${prefix}.ipa" | awk '{print $1}')"
+            printf '%s\n' 'See the .manifest.txt release asset for source revisions and package hashes.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create a Draft Release
