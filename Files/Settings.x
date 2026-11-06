@@ -167,6 +167,35 @@ static NSString *GetCacheSize() { // YTLite - @dayanch96
         settingItemId:0];
     [sectionItems addObject:fixPlaybackissues];
 
+    // iPhone 15 diagnostic: show the actual NSError domain/code captured by the
+    // playback error handler. Do not expose URLs, tokens, or account information.
+    YTSettingsSectionItem *playbackDiagnostic = [YTSettingsSectionItemClass itemWithTitle:@"Last playback error"
+        titleDescription:@"Show the most recent playback error code recorded by YouMod."
+        accessibilityIdentifier:nil
+        detailTextBlock:nil
+        selectBlock:^BOOL (YTSettingsCell *cell, NSUInteger arg1) {
+            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+            NSString *domain = [defaults stringForKey:@"YouModLastPlaybackErrorDomain"];
+            NSDate *when = [defaults objectForKey:@"YouModLastPlaybackErrorDate"];
+            NSString *detail = @"No player error captured yet. Reproduce the failure, then check here.";
+            if (domain.length > 0) {
+                NSInteger code = [defaults integerForKey:@"YouModLastPlaybackErrorCode"];
+                NSString *dateText = [when isKindOfClass:[NSDate class]]
+                    ? [NSDateFormatter localizedStringFromDate:when
+                          dateStyle:NSDateFormatterShortStyle timeStyle:NSDateFormatterMediumStyle]
+                    : @"unknown";
+                detail = [NSString stringWithFormat:@"Domain: %@\nCode: %ld\nTime: %@",
+                          domain, (long)code, dateText];
+            }
+            YTAlertView *alert = [%c(YTAlertView) infoDialog];
+            alert.title = @"Playback diagnostics";
+            alert.subtitle = detail;
+            alert.shouldDismissOnBackgroundTap = YES;
+            [alert show];
+            return YES;
+        }];
+    [sectionItems addObject:playbackDiagnostic];
+
     // Settings
     YTSettingsSectionItem *settings = [YTSettingsSectionItemClass itemWithTitle:nil
         titleDescription:YMLOC(@"SETTINGS")
