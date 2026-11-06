@@ -20,11 +20,15 @@ on:
         required: true
         type: string
 
-      minimal_build:
-        description: "Diagnostic IPA: build only YouMod, without auxiliary tweaks or Safari extension"
-        default: false
-        required: false
-        type: boolean
+      build_profile:
+        description: "minimal = YouMod only; balanced = YouMod + dislikes + notch fix; full = custom extras"
+        required: true
+        default: balanced
+        type: choice
+        options:
+          - minimal
+          - balanced
+          - full
 
       youpip:
         description: "Integrate YouPiP"
@@ -107,7 +111,7 @@ jobs:
       - name: Hide Sensitive Inputs
         uses: levibostian/action-hide-sensitive-inputs@v1
         with:
-          exclude_inputs: bundle_id,display_name,youpip,ytuhd,ryd,abconfig,ytweaks,youslider,gonerino,demc,volboost,youquality,minimal_build
+          exclude_inputs: bundle_id,display_name,youpip,ytuhd,ryd,abconfig,ytweaks,youslider,gonerino,demc,volboost,youquality,build_profile
           
       - name: Install MEGA downloader
         if: ${{ startsWith(inputs.ipa_url, 'https://mega.nz/') }}
@@ -145,7 +149,7 @@ jobs:
         run: brew install make ldid
 
       - name: Install Go
-        if: ${{ !inputs.minimal_build && (inputs.gonerino) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.gonerino) }}
         run: brew install go
 
       - name: Set PATH Environment Variables
@@ -216,7 +220,7 @@ jobs:
           path: YouMod
 
       - name: Clone Open in YouTube (Safari Extension)
-        if: ${{ !inputs.minimal_build }}
+        if: ${{ inputs.build_profile == 'full' }}
         run: |
           git clone --quiet -n --depth=1 --filter=tree:0 https://github.com/BillyCurtis/OpenYouTubeSafariExtension.git
           cd OpenYouTubeSafariExtension
@@ -225,61 +229,61 @@ jobs:
           mv *.appex ${{ github.workspace }}
 
       - name: Clone YouPiP
-        if: ${{ !inputs.minimal_build && (inputs.youpip) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.youpip) }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouPiP.git
     
       - name: Clone YTUHD
-        if: ${{ !inputs.minimal_build && (inputs.ytuhd) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.ytuhd) }}
         run: git clone --quiet --depth=1 --recurse-submodules https://github.com/PoomSmart/YTUHD.git
            
       - name: Clone Return-YouTube-Dislikes
-        if: ${{ !inputs.minimal_build && (inputs.ryd) }}
+        if: ${{ inputs.build_profile == 'balanced' || (inputs.build_profile == 'full' && inputs.ryd) }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/Return-YouTube-Dislikes.git
 
       - name: Clone YouGroupSettings
-        if: ${{ !inputs.minimal_build }}
+        if: ${{ inputs.build_profile != 'minimal' }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouGroupSettings.git
            
       - name: Clone YTVideoOverlay
-        if: ${{ !inputs.minimal_build && (inputs.youpip || inputs.ytuhd || inputs.youquality) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.youpip || inputs.ytuhd || inputs.youquality) }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YTVideoOverlay.git
           
       - name: Clone YTABConfig
-        if: ${{ !inputs.minimal_build && (inputs.abconfig) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.abconfig) }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YTABConfig.git
 
       - name: Clone UncappedAVPlayer
-        if: ${{ !inputs.minimal_build }}
+        if: ${{ inputs.build_profile == 'full' }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/UncappedAVPlayer.git
 
       - name: Clone DontEatMyContent
-        if: ${{ !inputs.minimal_build && (inputs.demc) }}
+        if: ${{ inputs.build_profile == 'balanced' || (inputs.build_profile == 'full' && inputs.demc) }}
         run: git clone --quiet --depth=1 https://github.com/therealFoxster/DontEatMyContent.git
 
       - name: Clone YouSlider
-        if: ${{ !inputs.minimal_build && (inputs.youslider) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.youslider) }}
         run: |
           git clone --quiet --depth=1 https://github.com/PoomSmart/YouSlider.git
           wget --no-verbose --quiet https://github.com/Tonwalter888/Tonwalter888.github.io/raw/refs/heads/main/debs/alderis.deb
 
       - name: Clone YTweaks
-        if: ${{ !inputs.minimal_build && (inputs.ytweaks) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.ytweaks) }}
         run: git clone --quiet --depth=1 https://github.com/fosterbarnes/YTweaks.git
 
       - name: Clone Gonerino
-        if: ${{ !inputs.minimal_build && (inputs.gonerino) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.gonerino) }}
         run: git clone --quiet --depth=1 https://github.com/castdrian/Gonerino.git
 
       - name: Clone youtube-native-share
-        if: ${{ !inputs.minimal_build && (inputs.ytshare) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.ytshare) }}
         run: git clone --quiet --depth=1 https://github.com/jkhsjdhjs/youtube-native-share.git
 
       - name: Clone VolumeBoostYT
-        if: ${{ !inputs.minimal_build && (inputs.volboost) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.volboost) }}
         run: git clone --quiet --depth=1 https://github.com/VasirakCalgux/VolumeBoostYT.git
 
       - name: Clone YouQuality
-        if: ${{ !inputs.minimal_build && (inputs.youquality) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.youquality) }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouQuality.git
 
       - name: Build YouMod
@@ -290,14 +294,14 @@ jobs:
           mv packages/*.deb ${{ github.workspace }}/youmod.deb
         
       - name: Build YouPiP
-        if: ${{ !inputs.minimal_build && (inputs.youpip) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.youpip) }}
         run: |
           cd YouPiP
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/youpip.deb
 
       - name: Build YTUHD
-        if: ${{ !inputs.minimal_build && (inputs.ytuhd) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.ytuhd) }}
         run: |
           cd YTUHD
           brew install meson ninja
@@ -306,70 +310,70 @@ jobs:
           mv packages/*.deb ${{ github.workspace }}/ytuhd.deb
 
       - name: Build Return-YouTube-Dislikes
-        if: ${{ !inputs.minimal_build && (inputs.ryd) }}
+        if: ${{ inputs.build_profile == 'balanced' || (inputs.build_profile == 'full' && inputs.ryd) }}
         run: |
           cd Return-YouTube-Dislikes
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ryd.deb
 
       - name: Build YouGroupSettings
-        if: ${{ !inputs.minimal_build }}
+        if: ${{ inputs.build_profile != 'minimal' }}
         run: |
           cd YouGroupSettings
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ygs.deb
 
       - name: Build YTVideoOverlay
-        if: ${{ !inputs.minimal_build && (inputs.youpip || inputs.ytuhd || inputs.youquality) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.youpip || inputs.ytuhd || inputs.youquality) }}
         run: |
           cd YTVideoOverlay
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ytvo.deb
 
       - name: Build YTABConfig
-        if: ${{ !inputs.minimal_build && (inputs.abconfig) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.abconfig) }}
         run: |
           cd YTABConfig
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ytabconfig.deb
 
       - name: Build UncappedAVPlayer
-        if: ${{ !inputs.minimal_build }}
+        if: ${{ inputs.build_profile == 'full' }}
         run: |
           cd UncappedAVPlayer
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless ARCHS=arm64
           mv packages/*.deb ${{ github.workspace }}/uncapavplayer.deb
 
       - name: Build DontEatMyContent
-        if: ${{ !inputs.minimal_build && (inputs.demc) }}
+        if: ${{ inputs.build_profile == 'balanced' || (inputs.build_profile == 'full' && inputs.demc) }}
         run: |
           cd DontEatMyContent
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/demc.deb
 
       - name: Build YouSlider
-        if: ${{ !inputs.minimal_build && (inputs.youslider) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.youslider) }}
         run: |
           cd YouSlider
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/youslider.deb
 
       - name: Build YTweaks
-        if: ${{ !inputs.minimal_build && (inputs.ytweaks) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.ytweaks) }}
         run: |
           cd YTweaks
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ytweaks.deb
           
       - name: Build Gonerino
-        if: ${{ !inputs.minimal_build && (inputs.gonerino) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.gonerino) }}
         run: |
           cd Gonerino
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/gonerino.deb
 
       - name: Build youtube-native-share
-        if: ${{ !inputs.minimal_build && (inputs.ytshare) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.ytshare) }}
         run: |
           cd youtube-native-share
           git clone --quiet --depth=1 https://github.com/protocolbuffers/protobuf.git
@@ -377,14 +381,14 @@ jobs:
           mv packages/*.deb ${{ github.workspace }}/ytnativeshare.deb
 
       - name: Build VolumeBoostYT
-        if: ${{ !inputs.minimal_build && (inputs.volboost) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.volboost) }}
         run: |
           cd VolumeBoostYT
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless ARCHS=arm64
           mv packages/*.deb ${{ github.workspace }}/volboostyt.deb
 
       - name: Build YouQuality
-        if: ${{ !inputs.minimal_build && (inputs.youquality) }}
+        if: ${{ inputs.build_profile == 'full' && (inputs.youquality) }}
         run: |
           cd YouQuality
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
@@ -407,14 +411,45 @@ jobs:
             exit 1
           fi
 
-          cyan -i youtube.ipa -o YouMod_${{ env.YT_VERSION }}_v${{ env.YOUMOD_VERSION }}.ipa -uwef $tweaks -n "${{ inputs.display_name }}" -b ${{ inputs.bundle_id }}
+          cyan -i youtube.ipa -o YouMod_${{ env.YT_VERSION }}_${{ inputs.build_profile }}_v${{ env.YOUMOD_VERSION }}.ipa -uwef $tweaks -n "${{ inputs.display_name }}" -b ${{ inputs.bundle_id }}
+
+      - name: Record build provenance
+        run: |
+          prefix="YouMod_${{ env.YT_VERSION }}_${{ inputs.build_profile }}_v${{ env.YOUMOD_VERSION }}"
+          manifest="${prefix}.manifest.txt"
+          {
+            printf 'repo=%s\nbranch=%s\ncommit=%s\n' "${{ github.repository }}" "${{ github.ref_name }}" "${{ github.sha }}"
+            printf 'profile=%s\nyoutube_version=%s\nyoumod_version=%s\n' "${{ inputs.build_profile }}" "${{ env.YT_VERSION }}" "${{ env.YOUMOD_VERSION }}"
+            printf 'source_ipa_sha256=%s\n' "$(shasum -a 256 youtube.ipa | awk '{print $1}')"
+            printf 'output_ipa_sha256=%s\n' "$(shasum -a 256 "${prefix}.ipa" | awk '{print $1}')"
+            for f in *.deb; do
+              [[ -f "$f" ]] || continue
+              printf 'package_sha256[%s]=%s\n' "$f" "$(shasum -a 256 "$f" | awk '{print $1}')"
+            done
+            for d in YouMod YouPiP YTUHD Return-YouTube-Dislikes YouGroupSettings YTVideoOverlay YTABConfig UncappedAVPlayer DontEatMyContent YouSlider YTweaks Gonerino youtube-native-share VolumeBoostYT YouQuality; do
+              if [[ -d "$d/.git" ]]; then
+                printf 'source_commit[%s]=%s\n' "$d" "$(git -C "$d" rev-parse HEAD)"
+              fi
+            done
+          } > "$manifest"
+          {
+            printf '### Build provenance\n'
+            printf 'Profile: `%s`\n' "${{ inputs.build_profile }}"
+            printf 'Commit: `%s`\n' "${{ github.sha }}"
+            printf 'YouTube version: `%s`\n' "${{ env.YT_VERSION }}"
+            printf 'Input IPA SHA-256: `%s`\n' "$(shasum -a 256 youtube.ipa | awk '{print $1}')"
+            printf 'Output IPA SHA-256: `%s`\n' "$(shasum -a 256 "${prefix}.ipa" | awk '{print $1}')"
+            printf '%s\n' 'See the .manifest.txt release asset for source revisions and package hashes.'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create a Draft Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: youmod-ipa${{ github.run_number }}
-          name: YouMod_${{ env.YT_VERSION }}_v${{ env.YOUMOD_VERSION }} (${{ github.run_number }}) 
-          files: YouMod_${{ env.YT_VERSION }}_v${{ env.YOUMOD_VERSION }}.ipa
+          name: YouMod_${{ env.YT_VERSION }}_${{ inputs.build_profile }}_v${{ env.YOUMOD_VERSION }} (${{ github.run_number }}) 
+          files: |
+            YouMod_${{ env.YT_VERSION }}_${{ inputs.build_profile }}_v${{ env.YOUMOD_VERSION }}.ipa
+            YouMod_${{ env.YT_VERSION }}_${{ inputs.build_profile }}_v${{ env.YOUMOD_VERSION }}.manifest.txt
           draft: true
 
       - name: Job Summary - Build Complete

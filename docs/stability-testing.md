@@ -1,44 +1,39 @@
-# YouMod stability: diagnostic build and test protocol
+# YouMod — Build profiles & stability testing
 
-This repository supports two YouTube IPA build configurations through **Actions → Build IPA with tweaks → Run workflow**.
+The known-working baseline is **YouTube 21.44.4 + YouMod v2.0.0, minimal**, tested by the user on iPhone 16 Pro with iOS 27.0.1 through SideStore. This is one device report, not a universal compatibility guarantee.
 
-## Build selection
+## Profiles
 
-- **Minimal diagnostic:** set `minimal_build` to **true**. The workflow builds and injects only `youmod.deb`. It does **not** include the Safari extension, YouPiP, YTUHD, Return-YouTube-Dislikes, YTVideoOverlay, YTABConfig, UncappedAVPlayer, DontEatMyContent, YouSlider, YTweaks, Gonerino, youtube-native-share, VolumeBoostYT, YouQuality, or YouGroupSettings. Other optional switches are ignored in this mode.
-- **Full:** leave `minimal_build` **false** to retain the previously configured integrations. These are not necessarily all required, compatible, or performance-neutral.
-- Both workflows compile **this repository at the branch selected in GitHub Actions**. To test unmerged changes, choose the development branch before clicking **Run workflow**. Neither workflow silently checks out the upstream repository anymore.
+In this fork go to **Actions → Build IPA with tweaks**, select the **development branch**, choose **Run workflow**, provide a direct link to a legitimately acquired decrypted YouTube IPA, and set `build_profile`:
 
-An independently sourced, decrypted YouTube IPA is required as the input; the repository does not distribute it. Do not publish copyrighted IPA files or share sensitive build inputs.
+| Choice | Included | Purpose |
+| --- | --- | --- |
+| `minimal` | YouMod only | Playback diagnostics / iPhone 15 initial test |
+| `balanced` (default) | YouMod, Return-YouTube-Dislikes, DontEatMyContent, YouGroupSettings | iPhone 16 Pro candidate: modest aesthetic and convenience additions |
+| `full` | YouMod, configurable tweak checkboxes, plus the original always-on integrations and Safari extension | Advanced tests only, not recommended as a first install |
 
-## Before testing
+Only `full` uses the optional checkboxes; other profiles ignore them. The `balanced` preset deliberately does **not** inject YouPiP, YTUHD, YTVideoOverlay, UncappedAVPlayer, YTABConfig, YouSlider, YTweaks, Gonerino, VolumeBoostYT, or the Safari extension. YouMod itself contains SponsorBlock, background playback, downloader, OLED appearance and player controls.
 
-Record device model, iOS version, installation/signing method, YouTube IPA version, YouMod commit SHA, `minimal_build`, whether playback fix is enabled, the input IPA hash, the final IPA hash, and whether the app was installed over an older build.
+GitHub Actions produces a **draft release** with the `.ipa` and corresponding `.manifest.txt` (source-IPA/output-IPA SHA-256, tweak hashes and source commits). These provenance records do not pin external dependencies, which still follow upstream branches: versions can change between runs.
 
-Use the **same input IPA and signing method** for A/B comparisons. If testing the playback fix toggle, fully close and relaunch the app after changing it: the relevant hook is initialized when the tweak loads.
+## Appearance — manual, conservative configuration
 
-## Test matrix
+Inside YouMod Settings, consider **OLED Theme** (Appearance), **Premium navigation icon** (Navigation bar), and optionally **Frosted Tab Bar** (Tab bar). Try one appearance setting at a time and verify scrolling, keyboard, dialogs and fullscreen. Avoid forced UHD quality or enabling duplicate player, PiP or SponsorBlock tweaks. Prefer stock/default video quality for initial stability testing.
 
-1. **Baseline (unmodified app, if available):** verify that the source YouTube version works with the same network and account.
-2. **Minimal build, fix OFF:** open at least 30 different normal videos. Record error popups, time-to-first-frame, retries, and startup behavior. Test Wi-Fi and cellular if available.
-3. **Minimal build, fix ON:** repeat on the same videos, restarting after enabling the fix. Watch for repeated reloads or a video that never begins.
-4. **Navigation and duration:** watch at least two videos for 20+ minutes each; reopen the feed and subscriptions, rotate to/from fullscreen, play 20 Shorts, try background audio and picture-in-picture when supported.
-5. **Full build:** only if the minimal baseline is reliable, enable additional integrations incrementally, recording exactly which change introduces regressions.
+Back up/export existing YouMod preferences before importing presets: YouMod's preferences importer replaces existing YouMod keys. No setting is automatically changed by this workflow.
 
-Compare adjacent versions only after the previous version passes the same tests. Do not infer playback stability from a successful GitHub Actions build.
+## Verification protocol
 
-## Evidence for issues
+1. Keep the previous **minimal 21.44.4** IPA as a rollback. For a controlled A/B comparison, use the identical source YouTube IPA, account, network, bundle ID, device and SideStore signing configuration.
+2. Test **balanced** on iPhone 16 Pro: 30 video openings, two 20-minute videos, 20 Shorts, feed scrolling before/after playing, fullscreen transitions, audio in background, and downloader.
+3. If balanced adds lag, return to the working minimal build. In a follow-up build isolate RYD/DontEatMyContent individually; do not infer causality from simultaneous changes.
+4. For the **iPhone 15** when available, record the iOS version and reproduce the error on a **minimal** build first. Compare playback with Fix Playback Issues OFF and ON, fully restarting YouTube after changing the toggle. Test another network and account/sign-out if practical. Record error domain/code, frequency and time-to-error; redact credentials.
+5. Only investigate retry limits, token handling or network/client changes after a concrete reproducible error. Do **not** import the highly experimental upstream TV/PS4 client spoofing playback patch without isolated testing.
 
-For every failure, capture the video URL or ID, time, current network, app/tweak versions, the precise visible message, the playback error **domain and code** if available, and the reproduction steps. Redact account tokens, credentials, and private data before sharing logs.
+### Pass criteria
 
-### Acceptance target
+No repeatable playback error or infinite reload across 30 video opens; no feed freeze or crash; no systematic increase in buffering/startup latency compared with the minimal control. Passing GitHub Actions does **not** establish these results.
 
-- No reproducible playback error overlay or infinite retry loop across 30 video opens.
-- No reproducible scrolling freeze after watching a video.
-- No unexpected crash during the long-playback, navigation, Shorts, or background-playback checks.
-- No systematic increase in time-to-first-frame relative to the stable reference build.
+## SideStore
 
-These are **test goals**, not claims of current compatibility. A different YouTube version or a new dependency can invalidate previous results.
-
-## Remaining engineering work
-
-This phase adds a reproducible **feature selection**, not fully reproducible dependencies: external Theos/tweak dependencies are still fetched at moving upstream heads. Pinning their tested SHAs and recording build provenance belongs in a subsequent change after the diagnostic baseline is established.
+SideStore's documented update behavior generally supports installing a newer IPA over the existing app with the same bundle ID while preserving app data, but backup is still recommended. Free Apple accounts have app / app-ID limits. Do not remove an existing working installation solely to test a new profile.
